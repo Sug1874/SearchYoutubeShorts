@@ -20,7 +20,7 @@ class YoutubeFetcher():
             items = response["items"]
 
             if only_short:
-                items = items.filter(lambda item: self.isShort(item.id.videoId))
+                items = items.filter(lambda item: self.isShort(item["id"]["videoId"]))
             return items
         except HttpError as e:
             print("Error occurred in calling API")
