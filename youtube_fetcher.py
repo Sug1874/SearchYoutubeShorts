@@ -1,5 +1,6 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import requests
 
 class YoutubeFetcher():
     def __init__(self, api_key):
@@ -16,17 +17,18 @@ class YoutubeFetcher():
                 videoDuration='short',
             ).execute()
 
+            items = response["items"]
+
             if only_short:
-                pass
+                items = items.filter(lambda item: self.isShort(item.id.videoId))
+            return items
         except HttpError as e:
             print("Error occurred in calling API")
             print(e)
             return None
-        else:
-            return response["items"]
         
     def isShort(movie_id):
-        url = f"https://www.youtube.com/shorts/{id}"
+        url = f"https://www.youtube.com/shorts/{movie_id}"
         response = requests.get(url)
         return response.url == url
 
