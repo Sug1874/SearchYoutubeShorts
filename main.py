@@ -7,6 +7,7 @@ import csv
 from dotenv import load_dotenv
 import os
 from youtube_fetcher import YoutubeFetcher
+import datetime
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
@@ -40,12 +41,23 @@ def main():
     # 登録者数でフィルタリング
     def filter_with_subscribers(channel_info):
         num_subscribers = channel_info["statistics"]["subscriberCount"]
-        return num_subscribers >= params.minSubscribers and num_subscribers <= params.maxSubscribers
+        return num_subscribers >= params.minSubscribers and num_subscribers <= params["maxSubscribers"]
 
     channel_infos = channel_infos.filter(filter_with_subscribers)
 
     upload_playlists_ids = map(lambda channel: channel["contentDetails"]["uploads"] , channel_infos)
     latest_videos = fetcher.fetch_latest_videos(upload_playlists_ids)
+
+    def filter_with_elapsed_days(latest_video):
+        latest_post_datetime = datetime.datetime.strptime(latest_video["snippet"]["publishedAt"], '%Y-%m-%dT%H:%M:%S')
+        latest_post_date = datetime.date(latest_post_datetime.year, latest_post_datetime.month, latest_post_datetime.day)
+        today = datetime.date.today()
+        return (today - latest_post_date) <= datetime.timedelta(params["maxElapsedDays"])
+    
+    latest_videos = latest_videos.filter(filter_with_elapsed_days)
+    
+
+        
 
 
 
