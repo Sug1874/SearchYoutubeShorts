@@ -37,12 +37,15 @@ def main():
     channel_ids = set(channel_ids)
     channel_infos = fetcher.fetch_channels(channel_ids)
 
-    # 登録者でフィルタリング
+    # 登録者数でフィルタリング
     def filter_with_subscribers(channel_info):
         num_subscribers = channel_info["statistics"]["subscriberCount"]
         return num_subscribers >= params.minSubscribers and num_subscribers <= params.maxSubscribers
 
     channel_infos = channel_infos.filter(filter_with_subscribers)
+
+    upload_playlists_ids = map(lambda channel: channel["contentDetails"]["uploads"] , channel_infos)
+    latest_videos = fetcher.fetch_latest_videos(upload_playlists_ids)
 
 
 

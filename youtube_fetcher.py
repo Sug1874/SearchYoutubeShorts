@@ -34,10 +34,30 @@ class YoutubeFetcher():
 
     
     def fetch_channels(self, channel_ids):
-        pass
+        try:
+            response = self.youtube.channels().list(
+                part = "id, contentDetails, statistics",
+                id = channel_ids,
+                maxResults = 50
+            ).execute()
+            items = response["items"]
+            return items
+        except HttpError as e:
+            print("Error occurred in calling API")
+            print(e)
+            return None
+        
 
-    def fetch_playlists(self, playlist_ids):
-        pass
+    def fetch_latest_videos(self, playlist_ids):
+        items = []
+        for id in playlist_ids:
+            response = self.youtube.playlistItems().list(
+                part = 'snippet',
+                playlistId = playlist_ids,
+                maxResults = 1
+            )
+            items.append(response['items'][0])
+        return items
 
     
 
