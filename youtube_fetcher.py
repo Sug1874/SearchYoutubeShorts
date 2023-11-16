@@ -37,7 +37,7 @@ class YoutubeFetcher():
         try:
             response = self.youtube.channels().list(
                 part = "id, contentDetails, statistics",
-                id = channel_ids,
+                id = ','.join(channel_ids),
                 maxResults = 50
             ).execute()
             items = response["items"]
@@ -53,11 +53,19 @@ class YoutubeFetcher():
         for id in playlist_ids:
             response = self.youtube.playlistItems().list(
                 part = 'snippet',
-                playlistId = playlist_ids,
+                playlistId = ','.join(playlist_ids),
                 maxResults = 1
             )
             items.append(response['items'][0])
         return items
+    
+    def fetch_video_statistics(self, video_ids):
+        response = self.youtube.video().list(
+            id = ','.join(video_ids),
+            maxResults = 50,
+        )
+        return response["items"]
+
 
     
 
