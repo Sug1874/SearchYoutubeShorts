@@ -12,104 +12,170 @@ import datetime
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
 
-FIELDS = ["title", "link", "likes", "plays", "channel", "subscriber", "elapesed_days"]
+param_file = open("params.json", "r")
+params = json.load(param_file)
+
+fetcher = YoutubeFetcher(API_KEY)
 
 
-def filter_with_elapsed_days(items, maxElapsedDays):
-    '''
-    itemsの中から最終投稿日からの経過日数の条件を満たすものだけを抽出
-    '''
+FIELDS = ["title", "link", "likes", "views", "channel", "subscriber", "latestPublishedDate"]
 
+def save_csv(items):
+    data = list(map(lambda item: [
+                                item["title"],
+                                f"https://www.youtube.com/shorts/{item['videoId']}",
+                                item["likes"],
+                                item["views"],
+                                f"https://www.youtube.com/{item['customUrl']}",
+                                item["subscribers"],
+                                datetime.datetime.strptime(item["latestPublishedDate"], '%Y-%m-%dT%H:%M:%SZ').strftime("%Y年%m月%d日")
+                            ], 
+                            items
+                    )
+                )
+    data.insert(0, FIELDS)
+    
+    now = datetime.datetime.today()
+    file_name = now.strftime('%Y%m%d%H%M%S')
 
-def save_csv(data):
-    with open('./outputs/output.csv', 'w') as f: 
+    with open(f"./outputs/{file_name}.csv", 'w', encoding='utf-8') as f: 
         csv_writer = csv.writer(f)
         csv_writer.writerows(data)
 
-
-def main():
-    param_file = open("params.json", "r")
-    params = json.load(param_file)
-
-    fetcher = YoutubeFetcher(API_KEY)
-    items = fetcher.fetch_with_keyword(params.keyword, True)
-    items = map(lambda item: {
-                            "video_id": item["id"]["videoId"],
+# キーワードでショートビデオを検索
+def get_short_videos(pageToken=None):
+    items, nextPageToken = fetcher.fetch_with_keyword(params["keyword"], True, pageToken)
+    if items == None:
+        return None
+    items = list(map(lambda item: {
+                            "videoId": item["id"]["videoId"],
                             "title": item["snippet"]["title"],
-                            "channel_id": item["snippet"]["channelId"],
+                            "channelId": item["snippet"]["channelId"],
                         },
                 items
-                )
-    
-    # チャンネル情報の取得
+                ))
+    return items, nextPageToken
+
+# チャンネル情報の取得
+def get_channel_infos(items):
     channel_ids = map(lambda item: item["channelId"], items)
     channel_ids = set(channel_ids)
+
     channel_infos = fetcher.fetch_channels(channel_ids)
-    channel_infos = map(
+    channel_infos = list(map(
                         lambda channel: {
-                                            "channel_id": channel["id"],
+                                            "channelId": channel["id"],
+                                            "customUrl": channel["snippet"]["customUrl"],
                                             "subscribers": channel["statistics"]["subscriberCount"],
-                                            "uploads_playlist_id": channel["contentDetails"]["uploads"]
+                                            "uploadsPlaylistId": channel["contentDetails"]["relatedPlaylists"]["uploads"]
                                         },
                         channel_infos
-                    )
+                    ))
+    return channel_infos
 
-    # 登録者数でフィルタリング
-    def filter_with_subscribers(channel_info):
-        num_subscribers = channel_info["subscribers"]
-        return num_subscribers >= params.minSubscribers and num_subscribers <= params["maxSubscribers"]
-    channel_infos = channel_infos.filter(filter_with_subscribers)
+# チャンネルの登録者数でフィルタリング
+def filter_with_subscribers(channel_info):
+    num_subscribers = int(channel_info["subscribers"])
+    min_subscribers = params["minSubscribers"]
+    max_subscribers = params["maxSubscribers"]
+    if min_subscribers > 0:
+        if max_subscribers >0:
+            return num_subscribers >= min_subscribers and num_subscribers <= max_subscribers
+        else:
+            return num_subscribers >= min_subscribers
+    else:
+        if max_subscribers >0:
+            return num_subscribers <= max_subscribers
+        else:
+            return True
 
-    # 最新投稿日の取得
-    upload_playlists_ids = map(lambda channel: channel["uploads_playlist_id"] , channel_infos)
+# 最後に動画投稿した日付の取得 
+def get_latest_published_date(channel_infos):
+    upload_playlists_ids = list(map(lambda channel: channel["uploadsPlaylistId"] , channel_infos))
     latest_videos = fetcher.fetch_latest_videos(upload_playlists_ids)
-    latest_published_date = map(lambda video: video["snippet"]["publishedAt"] , channel_infos)
+    latest_published_date = list(map(lambda video: video["snippet"]["publishedAt"] , latest_videos))
+    return latest_published_date
+
+# 最後に投稿した日からの経過日数でフィルタリング
+def filter_with_elapsed_days(channel):
+    if params["maxElapsedDays"] < 0:
+        return True
+    
+    latest_post_datetime = datetime.datetime.strptime(channel["latestPublishedDate"], '%Y-%m-%dT%H:%M:%SZ')
+    latest_post_date = datetime.date(latest_post_datetime.year, latest_post_datetime.month, latest_post_datetime.day)
+    today = datetime.date.today()
+    return (today - latest_post_date) <= datetime.timedelta(params["maxElapsedDays"])
+
+# 動画の再生数、高評価数を取得
+def get_video_statistics(items):
+    video_ids = list(map(lambda item: item["videoId"], items))
+    video_infos = fetcher.fetch_video_statistics(video_ids)
+
+    def get_views_likes(info):
+        result = {"views": None, "likes": None}
+        if 'viewCount' in info["statistics"]:
+            result["views"] = info["statistics"]["viewCount"]
+        if 'likeCount' in info["statistics"]:
+            result["likes"] = info["statistics"]["likeCount"]
+        return result
+
+    video_statistics = list(map(get_views_likes, video_infos))
+    return video_statistics
+
+
+def get_one_page_videos(pageToken=None):
+    items, nextPageToken = get_short_videos(pageToken)
+
+    channel_infos = get_channel_infos(items)
+    channel_infos = list(filter(filter_with_subscribers, channel_infos))
+
+    latest_published_date = get_latest_published_date(channel_infos)
 
     # 最新投稿日をchannel_infoに追加
     for channel, latest_date in zip(channel_infos, latest_published_date):
-        channel["latest_published_date"] = latest_date
-
-    def filter_with_elapsed_days(channel):
-        latest_post_datetime = datetime.datetime.strptime(channel["latest_published_date"], '%Y-%m-%dT%H:%M:%S')
-        latest_post_date = datetime.date(latest_post_datetime.year, latest_post_datetime.month, latest_post_datetime.day)
-        today = datetime.date.today()
-        return (today - latest_post_date) <= datetime.timedelta(params["maxElapsedDays"])
+        channel["latestPublishedDate"] = latest_date
     
-    channel_infos = channel_infos.filter(filter_with_elapsed_days)
+    channel_infos = list(filter(filter_with_elapsed_days, channel_infos))
 
+    # 登録者、経過日数の条件を満たさない動画を除外
     remove_index = []
-    for item, i in enumerate(items):
+    for i, item in enumerate(items):
         flag = False
         for channel in channel_infos:
-            if item["channel_id"] == channel["channel_id"]:
+            if item["channelId"] == channel["channelId"]:
                 flag = True
+                item["customUrl"] = channel["customUrl"]
                 item["subscribers"] = channel["subscribers"]
-                item["latest_published_date"] = channel["latest_published_date"]
+                item["latestPublishedDate"] = channel["latestPublishedDate"]
         if not flag:
             remove_index.append(i)
     
     for i in sorted(remove_index, reverse=True):
         items.pop(i)
-    
-    video_ids = map(lambda item: item["video_id"], items)
-    video_infos = fetcher.fetch_video_statistics(video_ids)
-    video_statistics = map(lambda info: {
-                                            "views": info["statistics"]["viewCount"],
-                                            "likes": info["statistics"]["likeCount"]
-                                        }
-                            ,video_infos
-                            )
+ 
+    video_statistics = get_video_statistics(items)
     
     for item, statistics in zip(items, video_statistics):
         item["views"] = statistics["views"]
         item["likes"] = statistics["likes"]
     
-    save_csv(items)
-    
+    return items, nextPageToken
 
 
-        
+def main():
+    nextPageToken = None
+    all_items = []
+    for i in range(params["maxPage"]):
+        items, nextPageToken = get_one_page_videos(nextPageToken)
+        all_items += items
+        if not nextPageToken:
+            break
+    save_csv(all_items)
 
+def test():
+    result_file = open("./test_data/result.json", "r")
+    result = json.load(result_file)
+    save_csv(result)
 
 
 if __name__ == "__main__":

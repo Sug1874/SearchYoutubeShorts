@@ -1,6 +1,7 @@
 {
-    "keyword": "",
-    "minSubscribers": -1,
-    "maxSubscribers": -1,
-    "maxElapsedDays": -1
+    "keyword": "ユニクロ",
+    "minSubscribers": 100,
+    "maxSubscribers": 1000000,
+    "maxElapsedDays": 30,
+    "maxPage": 5
 }

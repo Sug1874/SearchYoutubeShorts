@@ -1,2 +1,7 @@
 .env
 youtube_env
+test_data
+test
+outputs/*
+__pycache__
+.DS_store
