@@ -38,13 +38,13 @@ def save_csv(items):
     now = datetime.datetime.today()
     file_name = now.strftime('%Y%m%d%H%M%S')
 
-    with open(f"./outputs/{file_name}.csv", 'w', encoding='utf-8') as f: 
+    with open(f"./outputs/{file_name}.csv", 'w', encoding='utf-8') as f:
         csv_writer = csv.writer(f)
         csv_writer.writerows(data)
 
 # キーワードでショートビデオを検索
 def get_short_videos(pageToken=None):
-    items, nextPageToken = fetcher.fetch_with_keyword(params["keyword"], True, pageToken)
+    items, nextPageToken = fetcher.fetch_with_keyword(params["keyword"], params["onlyShort"], pageToken)
     if items == None:
         return None
     items = list(map(lambda item: {
@@ -126,8 +126,14 @@ def get_video_statistics(items):
 def get_one_page_videos(pageToken=None):
     items, nextPageToken = get_short_videos(pageToken)
 
+    if len(items) == 0:
+        return [], nextPageToken
+
     channel_infos = get_channel_infos(items)
     channel_infos = list(filter(filter_with_subscribers, channel_infos))
+
+    if len(channel_infos) == 0:
+        return [], nextPageToken
 
     latest_published_date = get_latest_published_date(channel_infos)
 
@@ -136,6 +142,8 @@ def get_one_page_videos(pageToken=None):
         channel["latestPublishedDate"] = latest_date
     
     channel_infos = list(filter(filter_with_elapsed_days, channel_infos))
+    if len(channel_infos) == 0:
+        return [], nextPageToken
 
     # 登録者、経過日数の条件を満たさない動画を除外
     remove_index = []
