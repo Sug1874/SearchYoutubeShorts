@@ -1,8 +1,8 @@
 {
     "keyword": "ユニクロ",
-    "minSubscribers": 100,
-    "maxSubscribers": 1000000,
+    "minSubscribers": 1000,
+    "maxSubscribers": 10000000,
     "maxElapsedDays": 30,
-    "maxPage": 1,
+    "maxPage": 5,
     "onlyShort": true
 }

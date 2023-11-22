@@ -5,3 +5,4 @@ test
 outputs/*
 __pycache__
 .DS_store
+auth/*

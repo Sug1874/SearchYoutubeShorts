@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import os
 from youtube_fetcher import YoutubeFetcher
 import datetime
+from repo import save_csv, save_spread_sheet
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
@@ -16,31 +17,6 @@ param_file = open("params.json", "r")
 params = json.load(param_file)
 
 fetcher = YoutubeFetcher(API_KEY)
-
-
-FIELDS = ["title", "link", "likes", "views", "channel", "subscriber", "latestPublishedDate"]
-
-def save_csv(items):
-    data = list(map(lambda item: [
-                                item["title"],
-                                f"https://www.youtube.com/shorts/{item['videoId']}",
-                                item["likes"],
-                                item["views"],
-                                f"https://www.youtube.com/{item['customUrl']}",
-                                item["subscribers"],
-                                datetime.datetime.strptime(item["latestPublishedDate"], '%Y-%m-%dT%H:%M:%SZ').strftime("%Y年%m月%d日")
-                            ], 
-                            items
-                    )
-                )
-    data.insert(0, FIELDS)
-    
-    now = datetime.datetime.today()
-    file_name = now.strftime('%Y%m%d%H%M%S')
-
-    with open(f"./outputs/{file_name}.csv", 'w', encoding='utf-8') as f:
-        csv_writer = csv.writer(f)
-        csv_writer.writerows(data)
 
 # キーワードでショートビデオを検索
 def get_short_videos(pageToken=None):
@@ -178,13 +154,7 @@ def main():
         all_items += items
         if not nextPageToken:
             break
-    save_csv(all_items)
-
-def test():
-    result_file = open("./test_data/result.json", "r")
-    result = json.load(result_file)
-    save_csv(result)
-
+    save_spread_sheet(all_items)
 
 if __name__ == "__main__":
     main()

@@ -9,6 +9,8 @@ class YoutubeFetcher():
 
     def fetch_with_keyword(self, keyword, only_short=True, pageToken=None):
         try:
+            if only_short:
+                keyword += ' shorts'
             if pageToken:
                 response = self.youtube.search().list(
                     q=keyword,
