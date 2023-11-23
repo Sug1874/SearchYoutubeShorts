@@ -3,6 +3,6 @@
     "minSubscribers": 1000,
     "maxSubscribers": 10000000,
     "maxElapsedDays": 30,
-    "maxPage": 5,
+    "maxPage": 1,
     "onlyShort": true
 }

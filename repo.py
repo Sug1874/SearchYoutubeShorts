@@ -1,5 +1,6 @@
 from google.oauth2.service_account import Credentials
 import gspread
+from gspread_formatting import *
 import datetime
 import csv
 import os
@@ -45,6 +46,14 @@ def save_spread_sheet(items):
 
     sheet = workbook.get_worksheet(0)
     sheet.update(f'A1:G{len(data)}', data)
+
+    fmt = CellFormat(
+        backgroundColor=Color(0, 0.8, 1.0),
+        textFormat=TextFormat(bold=True),
+        horizontalAlignment='CENTER'
+    )
+    format_cell_range(sheet, 'A1:G1', fmt)
+    Color()
     return
 
 
