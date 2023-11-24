@@ -1,6 +1,7 @@
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import requests
+import sys
 
 class YoutubeFetcher():
     def __init__(self, api_key):
@@ -37,7 +38,7 @@ class YoutubeFetcher():
         except HttpError as e:
             print("Error occurred in calling API")
             print(e)
-            return None
+            sys.exit(1)
         
     def isShort(self, movie_id):
         url = f"https://www.youtube.com/shorts/{movie_id}"
@@ -57,27 +58,38 @@ class YoutubeFetcher():
         except HttpError as e:
             print("Error occurred in calling API")
             print(e)
-            return None
+            sys.exit(1)
         
 
     def fetch_latest_videos(self, playlist_ids):
         items = []
-        for id in playlist_ids:
-            response = self.youtube.playlistItems().list(
-                part = 'snippet',
-                playlistId = id,
-                maxResults = 1
-            ).execute()
-            items.append(response['items'][0])
-        return items
+        try:
+            for id in playlist_ids:
+                response = self.youtube.playlistItems().list(
+                    part = 'snippet',
+                    playlistId = id,
+                    maxResults = 1
+                ).execute()
+                items.append(response['items'][0])
+            return items
+        except HttpError as e:
+            print("Error occurred in calling API")
+            print(e)
+            sys.exit(1)
+
     
     def fetch_video_statistics(self, video_ids):
-        response = self.youtube.videos().list(
-            part = 'statistics',
-            id = ','.join(video_ids),
-            maxResults = 50,
-        ).execute()
-        return response["items"]
+        try:
+            response = self.youtube.videos().list(
+                part = 'statistics',
+                id = ','.join(video_ids),
+                maxResults = 50,
+            ).execute()
+            return response["items"]
+        except HttpError as e:
+            print("Error occurred in calling API")
+            print(e)
+            sys.exit(1)
 
 
     

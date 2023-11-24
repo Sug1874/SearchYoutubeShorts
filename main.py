@@ -3,12 +3,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
 from dotenv import load_dotenv
-import csv
-from dotenv import load_dotenv
-import os
 from youtube_fetcher import YoutubeFetcher
 import datetime
-from repo import save_csv, save_spread_sheet
+from repo import save_spread_sheet
 
 load_dotenv()
 API_KEY = os.getenv('API_KEY')
@@ -154,6 +151,8 @@ def main():
         all_items += items
         if not nextPageToken:
             break
+    
+    # Googleスプレッドシートに保存
     save_spread_sheet(all_items)
 
 if __name__ == "__main__":
